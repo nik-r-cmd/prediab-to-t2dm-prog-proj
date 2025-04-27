@@ -238,7 +238,7 @@ if submit:
         st.error("Some inputs are missing or invalid. Please fill out all fields.")
         st.stop()
 
-    
+    # Transform the input data
     try:
         X_proc = preprocessor.transform(raw_input)
         prediction = model.predict(X_proc)[0]
