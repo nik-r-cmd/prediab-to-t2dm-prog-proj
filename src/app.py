@@ -8,6 +8,8 @@ from fpdf import FPDF
 from datetime import datetime
 import os
 from PIL import Image, ImageEnhance
+from src import preprocessing  # Makes the custom class discoverable during unpickling
+
 
 
 preprocessor = joblib.load("data/preprocessor.joblib")
