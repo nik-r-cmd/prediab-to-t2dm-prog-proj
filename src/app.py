@@ -18,20 +18,28 @@ with open("data/feature_names.pkl", "rb") as f:
 
 
 def parse_feature(encoded_feature_name, raw_input):
-    if "__" in encoded_feature_name:
-        _, base_name = encoded_feature_name.split("__", 1)
-    else:
-        base_name = encoded_feature_name
+    base_name = encoded_feature_name.split("__")[-1]
     for col in raw_input.columns:
         if base_name.lower() in col.lower():
             return col, raw_input.iloc[0][col]
-    return base_name, "Unknown"
+    return encoded_feature_name, "Unknown"
 
+def get_reference_range(feature):
+    ranges = {
+        "bmi": "Normal: 18.5–24.9 kg/m²",
+        "fasting_blood_sugar": "Normal: <100 mg/dL, Prediabetes: 100–125, Diabetes: ≥126",
+        "hba1c": "Normal: <5.7%, Prediabetes: 5.7–6.4%, Diabetes: ≥6.5%",
+        "cholesterol": "Desirable: <200 mg/dL, Borderline: 200–239, High: ≥240",
+        "sleep": "Recommended: 7–9 hours",
+        "stress": "Ideal: <7 on a 10-point scale",
+        "screen_time": "Recommended: ≤4 hours/day",
+        "fast_food": "Recommended: ≤1 meal/week",
+        "genetic_risk_score": "1 = Low risk, 10 = High risk",
+        "age": "Increased risk ≥45 years",
+    }
+    return ranges.get(feature, "Clinical guidance varies by context.")
 
 def get_intervention(feature, value):
-    feature = feature.lower()
-
-    
     if "bmi" in feature:
         if value < 18.5:
             return "Underweight. Consult a dietitian to achieve a healthy weight."
@@ -135,7 +143,14 @@ def get_intervention(feature, value):
 
     return "No specific recommendation available."
 
-
+def sanitize_text(text, max_length=1000):
+    sanitized = (text.replace("≥", ">=")  
+                    .replace("≤", "<=")  
+                    .replace("–", "-")   
+                    .replace("—", "-")   
+                    .replace("’", "'").replace("‘", "'")
+                    .replace("•", "*").replace("\n", " ").replace("\r", " "))
+    return sanitized[:max_length] + "..." if len(sanitized) > max_length else sanitized
 
 def prepare_transparent_logo(path, output_path, alpha=0.1):
     img = Image.open(path).convert("RGBA")
@@ -153,7 +168,7 @@ class PDF(FPDF):
         self.cell(0, 10, "PrediX: Diabetes Risk Report", ln=True, align="C")
         self.ln(5)
         self.set_font("Arial", '', 11)
-        today = datetime.today().strftime("%b %d, 2023")
+        today = datetime.today().strftime("%b %d, %Y")
         self.cell(70, 8, f"Patient: {name}", border=0, ln=0, align="L")
         self.cell(50, 8, f"Age: {age}", border=0, ln=0, align="C")
         self.cell(70, 8, f"Date: {today}", border=0, ln=1, align="R")
@@ -168,41 +183,32 @@ class PDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}    © 2025 PrediX Clinical AI", 0, 0, 'C')
 
 
-def sanitize_text(text, max_length=1000):
-    sanitized = (text.replace("\u2013", "-").replace("\u2014", "-")
-                    .replace("\u2019", "'").replace("\u2018", "'")
-                    .replace("\u2022", "*").replace("\n", " ").replace("\r", " "))
-    if len(sanitized) > max_length:
-        sanitized = sanitized[:max_length] + "..."
-    return sanitized
-
-
 st.title("PrediX: Diabetes Risk Prediction and Clinical Report")
 st.subheader("AI-powered medical-grade output with personalized care guidance")
 
 name = st.text_input("Patient Name", "")
-age = st.number_input("Age", 10, 100, step=1, value=25)
+age = st.number_input("Age (years)", 10, 100, step=1, value=25)
 
 with st.form("input_form"):
     gender = st.selectbox("Gender", ["Male", "Female", "Other"])
     region = st.selectbox("Region", ["North", "South", "East", "West", "Northeast", "Central"])
-    income = st.number_input("Family Income", 100000, 2500000, step=10000)
-    genetic = st.slider("Genetic Risk Score", 1, 10)
-    bmi = st.number_input("BMI", 16.0, 40.0)
+    income = st.number_input("Family Income (INR/year)", 100000, 2500000, step=10000)
+    genetic = st.slider("Genetic Risk Score (1-10)", 1, 10)
+    bmi = st.number_input("BMI (kg/m²)", 16.0, 40.0)
     physical = st.selectbox("Physical Activity Level", ["Sedentary", "Moderate", "Active"])
     diet = st.selectbox("Dietary Habits", ["Unhealthy", "Moderate", "Healthy"])
-    fast_food = st.slider("Fast Food Intake per week", 1, 10)
+    fast_food = st.slider("Fast Food Intake (meals/week)", 1, 10)
     smoking = st.selectbox("Smoking", ["Yes", "No"])
     alcohol = st.selectbox("Alcohol Consumption", ["Yes", "No"])
-    fbs = st.number_input("Fasting Blood Sugar", 70.0, 180.0)
-    hba1c = st.number_input("HbA1c", 4.0, 10.0)
-    cholesterol = st.number_input("Cholesterol", 120.0, 300.0)
+    fbs = st.number_input("Fasting Blood Sugar (mg/dL)", 70.0, 180.0)
+    hba1c = st.number_input("HbA1c (%)", 4.0, 10.0)
+    cholesterol = st.number_input("Cholesterol (mg/dL)", 120.0, 300.0)
     prediab = st.selectbox("Prediabetes Diagnosis", ["Yes", "No"])
     diabetes_type = st.selectbox("Parental Diabetes Type", ["None", "Type 1", "Type 2"])
     family_hist = st.selectbox("Family History of Diabetes", ["Yes", "No"])
-    sleep = st.number_input("Sleep Hours", 4.0, 10.0)
-    stress = st.slider("Stress Level", 1, 10)
-    screen = st.slider("Screen Time (hours/day)", 1, 12)
+    sleep = st.number_input("Sleep Hours (per night)", 4.0, 10.0)
+    stress = st.slider("Stress Level (1-10)", 1, 10)
+    screen = st.slider("Screen Time (hrs/day)", 1, 12)
     submit = st.form_submit_button("Generate Report")
 
 if submit:
@@ -211,34 +217,14 @@ if submit:
         st.stop()
 
     raw_input = pd.DataFrame([{
-        "Age": age,
-        "Gender": gender,
-        "Region": region,
-        "Family_Income": income,
-        "Genetic_Risk_Score": genetic,
-        "BMI": bmi,
-        "Physical_Activity_Level": physical,
-        "Dietary_Habits": diet,
-        "Fast_Food_Intake": fast_food,
-        "Smoking": smoking,
-        "Alcohol_Consumption": alcohol,
-        "Fasting_Blood_Sugar": fbs,
-        "HbA1c": hba1c,
-        "Cholesterol_Level": cholesterol,
-        "Prediabetes": prediab,
-        "Parent_Diabetes_Type": diabetes_type,
-        "Family_History_Diabetes": family_hist,
-        "Sleep_Hours": sleep,
-        "Stress_Level": stress,
-        "Screen_Time": screen
-    }])
-
-    
-    if raw_input.empty or raw_input.isnull().values.any():
-        st.error("Some inputs are missing or invalid. Please fill out all fields.")
-        st.stop()
-
-    # Transform the input data
+        "Age": age, "Gender": gender, "Region": region, "Family_Income": income,
+        "Genetic_Risk_Score": genetic, "BMI": bmi, "Physical_Activity_Level": physical,
+        "Dietary_Habits": diet, "Fast_Food_Intake": fast_food, "Smoking": smoking,
+        "Alcohol_Consumption": alcohol, "Fasting_Blood_Sugar": fbs, "HbA1c": hba1c,
+        "Cholesterol_Level": cholesterol, "Prediabetes": prediab,
+        "Parent_Diabetes_Type": diabetes_type, "Family_History_Diabetes": family_hist,
+        "Sleep_Hours": sleep, "Stress_Level": stress, "Screen_Time": screen
+    }])  
     try:
         X_proc = preprocessor.transform(raw_input)
         prediction = model.predict(X_proc)[0]
@@ -247,69 +233,92 @@ if submit:
         st.error(f"Error during prediction: {e}")
         st.stop()
 
-    st.success(f"🧪 Estimated Risk Progression: **{prediction:.1f} years**")
+    st.success(f"Estimated Risk Progression: {prediction:.1f} years")
 
     if not os.path.exists("outputs"):
         os.makedirs("outputs")
 
-    plt.figure()
+    # Graphs
+    plt.figure(figsize=(10, 5))
     shap.summary_plot(shap_values, feature_names=feature_names, show=False)
     plt.savefig("outputs/shap_beeswarm.png")
     plt.close()
 
-    plt.figure()
-    shap.waterfall_plot(shap_values[0])
-    plt.savefig("outputs/shap_waterfall.png")
+    plt.figure(figsize=(8, 6)) 
+    shap.plots.waterfall(
+        shap_values[0],  
+        max_display=15,  
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/shap_waterfall.png", bbox_inches="tight", dpi=300)  
     plt.close()
 
     shap_df = pd.DataFrame({
         "Feature": feature_names,
         "SHAP Value": shap_values[0].values
-    }).sort_values(by="SHAP Value", key=abs, ascending=False)
+    }).assign(Impact=lambda d: d["SHAP Value"].abs()).sort_values(by="Impact", ascending=False)
 
     pdf = PDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-
     pdf.set_font("Arial", '', 12)
     pdf.multi_cell(0, 10, sanitize_text(f"Estimated time to progression to Type 2 Diabetes: {prediction:.1f} years"))
     pdf.ln(5)
-
     pdf.set_font("Arial", 'B', 13)
-    pdf.cell(0, 10, "Personalized Risk Factors & Recommendations", ln=True)
+    pdf.cell(0, 10, "Top Risk Factors & Recommendations", ln=True)
     pdf.ln(3)
-
     pdf.set_font("Arial", '', 11)
+
     for idx, row in shap_df.iterrows():
         f_raw, val = parse_feature(row["Feature"], raw_input)
-        if val == "Unknown": continue
+        if val == "Unknown":
+            continue
         label = f_raw.replace("_", " ").title()
-        impact = row["SHAP Value"]
-        intervention = get_intervention(f_raw, val)
-
-        feature_text = sanitize_text(f"{idx + 1}. {label} (Input: {val}) - Impact: {impact:.2f}")
+        intervention = get_intervention(f_raw.lower(), val)
+        color = (200, 0, 0) if row["SHAP Value"] > 0.05 else (0, 150, 0)
+        pdf.set_text_color(*color)
+        unit = ""  
         pdf.set_x(15)
-        pdf.multi_cell(180, 8, feature_text, border=0, align="L")
-
-        sanitized_intervention = sanitize_text(intervention)
-        pdf.set_x(15)
+        pdf.multi_cell(180, 8, sanitize_text(f"{label} (Input: {val}) - Impact: {row['SHAP Value']:.2f}"))
+        pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", 'I', 10)
-        pdf.multi_cell(180, 7, sanitized_intervention, border=0, align="L")
-        pdf.set_font("Arial", '', 11)
+        pdf.set_x(15)
+        if intervention:
+            pdf.multi_cell(180, 7, sanitize_text(intervention))
+        else:
+            pdf.multi_cell(180, 7, sanitize_text("No specific recommendation available."))
         pdf.ln(2)
+        pdf.set_font("Arial", '', 11)
 
-    for path, title in [("outputs/shap_beeswarm.png", "SHAP Summary Plot"),
-                        ("outputs/shap_waterfall.png", "SHAP Waterfall Plot")]:
+
+    def add_graph_page(img_path, title, description):
+        if not os.path.exists(img_path):
+            return
         pdf.add_page()
         pdf.set_font("Arial", 'B', 13)
         pdf.cell(0, 10, title, ln=True, align="C")
+        pdf.set_font("Arial", '', 11)
         pdf.ln(10)
-        if os.path.exists(path):
-            pdf.image(path, x=30, w=150)
+        pdf.image(img_path, x=30, w=150)
+        pdf.ln(8)
+        pdf.multi_cell(0, 8, sanitize_text(description))
+
+    add_graph_page(
+        "outputs/shap_beeswarm.png",
+        "SHAP Summary Plot",
+        "This plot shows the impact of each feature on the predicted diabetes risk. Each point represents a patient's input for a feature—colored by value: blue = low, red = high. Features pushing the prediction higher appear on the right, and those lowering it on the left."
+    )
+    add_graph_page(
+        "outputs/shap_waterfall.png",
+        "SHAP Waterfall Plot",
+        "This chart explains how your individual features contributed to the final risk prediction. Red bars increase risk, blue bars reduce it. It starts at the model's baseline and ends at your final prediction. Each label shows a feature from your inputs."
+    )
 
     pdf_path = "outputs/Diabetes_Risk_Report.pdf"
     pdf.output(pdf_path)
 
     with open(pdf_path, "rb") as f:
-        st.download_button("📄 Download Your Clinical PDF", f, file_name="Diabetes_Risk_Report.pdf", mime="application/pdf")
+        st.download_button("Download Your Clinical PDF", f, file_name="Diabetes_Risk_Report.pdf", mime="application/pdf")
+
 
