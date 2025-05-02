@@ -9,5 +9,8 @@ reportlab
 streamlit
 fpdf==1.7.2
 seaborn==0.13.2
+xgboost>=1.6
+
+
 
 

@@ -8,13 +8,11 @@ from fpdf import FPDF
 from datetime import datetime
 import os
 from PIL import Image, ImageEnhance
-import preprocessing
-
-
-
+import xgboost as xgb
 
 preprocessor = joblib.load("data/preprocessor.joblib")
-model = joblib.load("model/diabetes_model.joblib")
+model = xgb.Booster()
+model.load_model("model/diabetes_model.xgb")
 explainer = shap.Explainer(model)
 with open("data/feature_names.pkl", "rb") as f:
     feature_names = joblib.load(f)
@@ -230,7 +228,9 @@ if submit:
     }])  
     try:
         X_proc = preprocessor.transform(raw_input)
-        prediction = model.predict(X_proc)[0]
+        dinput = xgb.DMatrix(X_proc)
+        prediction = model.predict(dinput)[0]
+
         shap_values = explainer(X_proc)
     except Exception as e:
         st.error(f"Error during prediction: {e}")
