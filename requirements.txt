@@ -7,3 +7,5 @@ matplotlib
 joblib
 reportlab
 streamlit
+fpdf==1.7.2
+
