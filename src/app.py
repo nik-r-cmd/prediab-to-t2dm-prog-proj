@@ -193,23 +193,58 @@ age = st.number_input("Age (years)", 10, 100, step=1, value=25)
 with st.form("input_form"):
     gender = st.selectbox("Gender", ["Male", "Female", "Other"])
     region = st.selectbox("Region", ["North", "South", "East", "West", "Northeast", "Central"])
+
     income = st.number_input("Family Income (INR/year)", 100000, 2500000, step=10000)
+    st.caption("\U0001F50E *Helps assess socioeconomic context impacting healthcare accessibility.*")
+
     genetic = st.slider("Genetic Risk Score (1-10)", 1, 10)
+    st.caption("\U0001F50E *Indicates inherited risk of diabetes based on family history. A score of 10 suggests both parents or multiple close relatives have diabetes.*")
+
     bmi = st.number_input("BMI (kg/m²)", 16.0, 40.0)
+    st.caption("\U0001F50E *Body Mass Index assesses body fat. Normal range: 18.5–24.9 kg/m².*")
+
     physical = st.selectbox("Physical Activity Level", ["Sedentary", "Moderate", "Active"])
+    st.caption("\U0001F50E *Describes routine activity level. Sedentary lifestyle increases metabolic risk.*")
+
     diet = st.selectbox("Dietary Habits", ["Unhealthy", "Moderate", "Healthy"])
+    st.caption("\U0001F50E *Reflects daily eating pattern. Unhealthy diets high in sugars/fats elevate diabetes risk.*")
+
     fast_food = st.slider("Fast Food Intake (meals/week)", 1, 10)
+    st.caption("\U0001F50E *Frequent fast food consumption (>1 meal/week) is linked to insulin resistance.*")
+
     smoking = st.selectbox("Smoking", ["Yes", "No"])
+    st.caption("\U0001F50E *Smoking increases cardiovascular and metabolic risks significantly.*")
+
     alcohol = st.selectbox("Alcohol Consumption", ["Yes", "No"])
+    st.caption("\U0001F50E *Excessive alcohol intake impacts liver function and glucose metabolism.*")
+
     fbs = st.number_input("Fasting Blood Sugar (mg/dL)", 70.0, 180.0)
+    st.caption("\U0001F50E *Fasting glucose levels indicate insulin efficiency. Normal: <100 mg/dL, Diabetes: ≥126.*")
+
     hba1c = st.number_input("HbA1c (%)", 4.0, 10.0)
+    st.caption("\U0001F50E *Reflects 3-month average glucose levels. Normal: <5.7%, Diabetes: ≥6.5%.*")
+
     cholesterol = st.number_input("Cholesterol (mg/dL)", 120.0, 300.0)
+    st.caption("\U0001F50E *Total blood cholesterol. Desirable: <200 mg/dL. High cholesterol increases diabetes complications.*")
+
     prediab = st.selectbox("Prediabetes Diagnosis", ["Yes", "No"])
+    st.caption("\U0001F50E *Indicates a prior medical diagnosis of elevated but non-diabetic blood sugar levels.*")
+
     diabetes_type = st.selectbox("Parental Diabetes Type", ["None", "Type 1", "Type 2"])
+    st.caption("\U0001F50E *Family history is a strong genetic predictor. Type 2 is more heritable.*")
+
     family_hist = st.selectbox("Family History of Diabetes", ["Yes", "No"])
+    st.caption("\U0001F50E *If parents or siblings have diabetes, your risk increases substantially.*")
+
     sleep = st.number_input("Sleep Hours (per night)", 4.0, 10.0)
+    st.caption("\U0001F50E *Less than 6 hours/night is associated with metabolic dysregulation.*")
+
     stress = st.slider("Stress Level (1-10)", 1, 10)
+    st.caption("\U0001F50E *Chronic stress alters cortisol and insulin, affecting glucose control.*")
+
     screen = st.slider("Screen Time (hrs/day)", 1, 12)
+    st.caption("\U0001F50E *Sedentary screen time >4 hrs/day is linked to reduced physical activity and obesity.*")
+
     submit = st.form_submit_button("Generate Report")
 
 if submit:
@@ -235,8 +270,6 @@ if submit:
     except Exception as e:
         st.error(f"Error during prediction: {e}")
         st.stop()
-
-    st.success(f"Estimated Risk Progression: {prediction:.1f} years")
 
     if not os.path.exists("outputs"):
         os.makedirs("outputs")
@@ -318,10 +351,47 @@ if submit:
         "This chart explains how your individual features contributed to the final risk prediction. Red bars increase risk, blue bars reduce it. It starts at the model's baseline and ends at your final prediction. Each label shows a feature from your inputs."
     )
 
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "Risk Interpretation Note", ln=True)
+    pdf.set_font("Arial", '', 11)
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, sanitize_text("Note: Lower progression years indicate higher diabetes risk."))
+
     pdf_path = "outputs/Diabetes_Risk_Report.pdf"
     pdf.output(pdf_path)
 
     with open(pdf_path, "rb") as f:
         st.download_button("Download Your Clinical PDF", f, file_name="Diabetes_Risk_Report.pdf", mime="application/pdf")
 
+    st.subheader("Risk Interpretation")
+    if prediction < 3:
+        st.error(f"🔴 High Risk: {prediction:.1f} years to progression")
+    elif 3 <= prediction <= 6:
+        st.warning(f"🟠 Moderate Risk: {prediction:.1f} years to progression")
+    else:
+        st.success(f"🟢 Low Risk: {prediction:.1f} years to progression")
 
+
+    import plotly.graph_objects as go
+
+    fig = go.Figure(go.Indicator(
+    mode = "gauge+number",
+    value = prediction,
+    title = {"text": "Estimated Years to Type 2 Diabetes"},
+    gauge = {
+        'axis': {'range': [0, 10]},
+        'steps': [
+            {'range': [0, 3], 'color': "red"},           # HIGH RISK
+            {'range': [3, 6], 'color': "orange"},        # MODERATE RISK
+            {'range': [6, 10], 'color': "lightgreen"}    # LOW RISK
+        ],
+        'threshold': {
+            'line': {'color': "black", 'width': 4},
+            'thickness': 0.75,
+            'value': prediction
+        }
+    }
+))
+
+    st.plotly_chart(fig)
