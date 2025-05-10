@@ -360,8 +360,10 @@ if submit:
 
     # Step 9: Output the PDF report
     pdf_output = BytesIO()
-    pdf.output(pdf_output, 'F')
+    pdf_bytes = pdf.output(dest='S').encode('latin1')  # Get PDF as string, encode to bytes
+    pdf_output.write(pdf_bytes)
     pdf_output.seek(0)
+
 
     st.download_button("Download Your Report", pdf_output, file_name="Diabetes_Risk_Report.pdf", mime="application/pdf")
 
