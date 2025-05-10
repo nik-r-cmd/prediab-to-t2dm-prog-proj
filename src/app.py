@@ -287,6 +287,7 @@ if submit:
     plt.savefig(beeswarm_buf, format="png", bbox_inches="tight", dpi=300)
     plt.close()
     beeswarm_buf.seek(0)
+    beeswarm_buf.name = "beeswarm.png"
 
     # SHAP Waterfall Plot
     waterfall_buf = BytesIO()
@@ -296,6 +297,8 @@ if submit:
     plt.savefig(waterfall_buf, format="png", bbox_inches="tight", dpi=300)
     plt.close()
     waterfall_buf.seek(0)
+    waterfall_buf.name = "waterfall.png"
+
 
     # Step 5: Create PDF report
     pdf = PDF(name, age)
