@@ -12,6 +12,7 @@ import xgboost as xgb
 from io import BytesIO
 import os
 import plotly.graph_objects as go
+import tempfile
 
 preprocessor = joblib.load("data/preprocessor.joblib")
 model = xgb.Booster()
@@ -287,7 +288,6 @@ if submit:
     plt.savefig(beeswarm_buf, format="png", bbox_inches="tight", dpi=300)
     plt.close()
     beeswarm_buf.seek(0)
-    beeswarm_buf.name = "beeswarm.png"
 
     # SHAP Waterfall Plot
     waterfall_buf = BytesIO()
@@ -297,7 +297,6 @@ if submit:
     plt.savefig(waterfall_buf, format="png", bbox_inches="tight", dpi=300)
     plt.close()
     waterfall_buf.seek(0)
-    waterfall_buf.name = "waterfall.png"
 
 
     # Step 5: Create PDF report
@@ -337,14 +336,23 @@ if submit:
 
     # Step 8: Add graphs to PDF report
     def add_graph_page_from_buffer(buf, title, description):
+        # Save buffer to temp .png file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+            tmp_file.write(buf.read())
+            tmp_file_path = tmp_file.name
+
+        # Add page and image to PDF
         pdf.add_page()
         pdf.set_font("Arial", 'B', 13)
         pdf.cell(0, 10, title, ln=True, align="C")
         pdf.set_font("Arial", '', 11)
         pdf.ln(10)
-        pdf.image(buf, x=30, w=150)
+        pdf.image(tmp_file_path, x=30, w=150)
         pdf.ln(8)
         pdf.multi_cell(0, 8, sanitize_text(description))
+
+        # Remove the temp file after adding
+        os.remove(tmp_file_path)
 
     # Add Beeswarm and Waterfall plots
     add_graph_page_from_buffer(beeswarm_buf, "SHAP Summary Plot", "This plot shows the impact of each feature on the predicted diabetes risk. Each point represents a patient's input for a feature—colored by value: blue = low, red = high. Features pushing the prediction higher appear on the right, and those lowering it on the left.")
