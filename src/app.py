@@ -167,6 +167,7 @@ class PDF(FPDF):
 
 st.title("PrediX: Diabetes Risk Prediction and Clinical Report")
 st.subheader("AI-powered medical-grade output with personalized care guidance")
+st.warning("This tool is intended for educational purposes only and should not replace professional medical advice. Please consult your doctor for personalized medical guidance.")
 
 name = st.text_input("Patient Name", "")
 age = st.number_input("Age (years)", 15, 25, step=1, value=25)
