@@ -183,7 +183,7 @@ with st.form("input_form"):
     st.caption("*Annual household income in INR. Socioeconomic determinant of health access*")
 
     genetic = st.slider("Genetic Risk Score (1-10)", 1, 10)
-    st.caption("*Composite score (1-10, 1: if farther in the family tree, 10: if closer in the family tree) based on family history and genetic predisposition to diabetes*")
+    st.caption("*Composite score (1–10): 1 indicates distant family history, 10 indicates close family history and strong genetic predisposition to diabetes.*")
 
     bmi = st.number_input("BMI (kg/m²)", 16.0, 40.0)
     st.caption("*BMI classification: Underweight <18.5, Normal 18.5-22.9, Overweight 23-24.9, Obese ≥25 (Asian criteria)*")
