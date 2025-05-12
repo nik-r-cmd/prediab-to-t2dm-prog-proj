@@ -4,6 +4,9 @@ import numpy as np
 import joblib
 import shap
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams["text.usetex"] = False
+matplotlib.rcParams["axes.unicode_minus"] = False
 from fpdf import FPDF
 from datetime import datetime
 from PIL import Image, ImageEnhance
@@ -130,6 +133,9 @@ def sanitize_text(text, max_length=1000):
                     .replace("’", "'").replace("‘", "'")
                     .replace("•", "*").replace("\n", " ").replace("\r", " "))
     return sanitized[:max_length] + "..." if len(sanitized) > max_length else sanitized
+
+def clean_label(label):
+    return label.replace("$", "").replace("%", "percent").replace("_", " ").strip()
 
 def prepare_transparent_logo(path, output_path, alpha=0.1):
     img = Image.open(path).convert("RGBA")
@@ -283,9 +289,11 @@ if submit:
     pdf.set_font("Arial", '', 11)
 
     shap_df = pd.DataFrame({
-        "Feature": feature_names,
-        "SHAP Value": shap_values.values[0]
-    }).assign(Impact=lambda d: d["SHAP Value"].abs()).sort_values(by="Impact", ascending=False)
+    "Feature": feature_names,
+    "SHAP Value": shap_values.values[0]
+}).assign(Impact=lambda d: d["SHAP Value"].abs()).sort_values(by="Impact", ascending=False)
+
+
 
     for idx, row in shap_df.iterrows():
         f_raw, val = parse_feature(row["Feature"], raw_input)
