@@ -1,5 +1,5 @@
 pandas
-numpy<2
+numpy
 scikit-learn
 imbalanced-learn
 shap
@@ -9,11 +9,7 @@ reportlab
 streamlit
 altair
 fpdf==1.7.2
-seaborn==0.13.2
-xgboost>=1.6
+seaborn
+xgboost
 plotly
 Pillow
-
-
-
-
